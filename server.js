@@ -298,6 +298,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
 });
 
 // Start express server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Servidor local rodando em http://localhost:${PORT}`);
 });
+server.timeout = 600000; // 10 minutes timeout to handle large excel files
