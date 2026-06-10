@@ -85,7 +85,7 @@ try {
                 
                 # Apply filter (columns A-H)
                 $filterRange = $escalaSheet.Range("A2:H${escalaLastRow}")
-                $filterRange.AutoFilter(6, $driver.Name)
+                $filterRange.AutoFilter(6, $driver.Name) | Out-Null
                 
                 # Copy range A1:F as picture (excludes columns G and H with car numbers)
                 $copyRange = $escalaSheet.Range("A1:F${escalaLastRow}")
@@ -129,7 +129,7 @@ try {
                 
                 # Clear filter
                 if ($escalaSheet.AutoFilterMode) {
-                    $escalaSheet.AutoFilter.ShowAllData()
+                    $escalaSheet.AutoFilter.ShowAllData() | Out-Null
                 }
             }
         } catch {
