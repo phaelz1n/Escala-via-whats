@@ -67,18 +67,27 @@ try {
         }
     }
     
+    # Get all motoristas in the scale sheet in one single COM call to optimize performance!
+    $escalaMotoristas = @()
+    if ($escalaLastRow -ge 3) {
+        $rangeValues = $escalaSheet.Range("F3:F${escalaLastRow}").Value2
+        if ($rangeValues -is [array]) {
+            # Convert 2D COM array to flat 1D array of lowercase strings
+            foreach ($val in $rangeValues) {
+                if ($val) {
+                    $escalaMotoristas += $val.ToString().Trim().ToLower()
+                }
+            }
+        } elseif ($rangeValues) {
+            $escalaMotoristas += $rangeValues.ToString().Trim().ToLower()
+        }
+    }
+
     # Process each driver
     foreach ($driver in $driversList) {
         try {
-            # Check if driver has scale in columns 6 (MOTORISTA)
-            $hasAny = $false
-            for ($r = 3; $r -le $escalaLastRow; $r++) {
-                $mName = $escalaSheet.Cells.Item($r, 6).Text.Trim()
-                if ($mName -eq $driver.Name) {
-                    $hasAny = $true
-                    break
-                }
-            }
+            # Check if driver has scale (thousands of times faster in-memory check!)
+            $hasAny = $escalaMotoristas -contains $driver.Name.ToLower()
             
             if ($hasAny) {
                 $driver.HasScale = $true
