@@ -48,12 +48,16 @@ try {
     
     $driversList = @()
     
-    # Read drivers
+    # Read drivers (ignore any driver whose name cell has a red background)
     for ($row = 2; $row -le $dadosLastRow; $row++) {
-        $name = $dadosSheet.Cells.Item($row, 1).Text.Trim()
+        $cell = $dadosSheet.Cells.Item($row, 1)
+        $name = $cell.Text.Trim()
         $phone = $dadosSheet.Cells.Item($row, 2).Text.Trim()
         
-        if ($name) {
+        # Check if cell background is red (Color 255 or ColorIndex 3)
+        $isRed = ($cell.Interior.Color -eq 255) -or ($cell.Interior.ColorIndex -eq 3)
+        
+        if ($name -and -not $isRed) {
             $driversList += [PSCustomObject]@{
                 Name = $name
                 Phone = $phone
@@ -65,62 +69,74 @@ try {
     
     # Process each driver
     foreach ($driver in $driversList) {
-        # Check if driver has scale in columns 6 (MOTORISTA)
-        $hasAny = $false
-        for ($r = 3; $r -le $escalaLastRow; $r++) {
-            $mName = $escalaSheet.Cells.Item($r, 6).Text.Trim()
-            if ($mName -eq $driver.Name) {
-                $hasAny = $true
-                break
+        try {
+            # Check if driver has scale in columns 6 (MOTORISTA)
+            $hasAny = $false
+            for ($r = 3; $r -le $escalaLastRow; $r++) {
+                $mName = $escalaSheet.Cells.Item($r, 6).Text.Trim()
+                if ($mName -eq $driver.Name) {
+                    $hasAny = $true
+                    break
+                }
             }
-        }
-        
-        if ($hasAny) {
-            $driver.HasScale = $true
             
-            # Apply filter (columns A-H)
-            $filterRange = $escalaSheet.Range("A2:H${escalaLastRow}")
-            $filterRange.AutoFilter(6, $driver.Name)
-            
-            # Copy range A1:F as picture (excludes columns G and H with car numbers)
-            $copyRange = $escalaSheet.Range("A1:F${escalaLastRow}")
-            
-            # Clean clipboard first
-            [System.Windows.Forms.Clipboard]::Clear()
-            
-            $copyRange.CopyPicture(1, 2) | Out-Null
-            Start-Sleep -Milliseconds 400
-            
-            # Save from clipboard
-            if ([System.Windows.Forms.Clipboard]::ContainsImage()) {
-                $img = [System.Windows.Forms.Clipboard]::GetImage()
-                $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
-                $savePath = Join-Path $OutputDir "${sanitizedName}.png"
-                # Convert path to forward slashes for Javascript friendliness
-                $webPath = $savePath -replace '\\', '/'
-                $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
-                $img.Dispose()
+            if ($hasAny) {
+                $driver.HasScale = $true
                 
-                $driver.ImagePath = $webPath
-            } else {
-                # Retry once
-                Start-Sleep -Milliseconds 400
+                # Apply filter (columns A-H)
+                $filterRange = $escalaSheet.Range("A2:H${escalaLastRow}")
+                $filterRange.AutoFilter(6, $driver.Name)
+                
+                # Copy range A1:F as picture (excludes columns G and H with car numbers)
+                $copyRange = $escalaSheet.Range("A1:F${escalaLastRow}")
+                
+                # Activate sheet and select range to stabilize CopyPicture
+                $escalaSheet.Activate()
+                $copyRange.Select() | Out-Null
+                
+                # Clean clipboard first
+                [System.Windows.Forms.Clipboard]::Clear()
+                
                 $copyRange.CopyPicture(1, 2) | Out-Null
                 Start-Sleep -Milliseconds 400
+                
+                # Save from clipboard
                 if ([System.Windows.Forms.Clipboard]::ContainsImage()) {
                     $img = [System.Windows.Forms.Clipboard]::GetImage()
                     $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
                     $savePath = Join-Path $OutputDir "${sanitizedName}.png"
+                    # Convert path to forward slashes for Javascript friendliness
                     $webPath = $savePath -replace '\\', '/'
                     $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
                     $img.Dispose()
+                    
                     $driver.ImagePath = $webPath
+                } else {
+                    # Retry once
+                    Start-Sleep -Milliseconds 400
+                    $copyRange.CopyPicture(1, 2) | Out-Null
+                    Start-Sleep -Milliseconds 400
+                    if ([System.Windows.Forms.Clipboard]::ContainsImage()) {
+                        $img = [System.Windows.Forms.Clipboard]::GetImage()
+                        $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
+                        $savePath = Join-Path $OutputDir "${sanitizedName}.png"
+                        $webPath = $savePath -replace '\\', '/'
+                        $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
+                        $img.Dispose()
+                        $driver.ImagePath = $webPath
+                    }
+                }
+                
+                # Clear filter
+                if ($escalaSheet.AutoFilterMode) {
+                    $escalaSheet.AutoFilter.ShowAllData()
                 }
             }
-            
-            # Clear filter
-            if ($escalaSheet.AutoFilterMode) {
-                $escalaSheet.AutoFilter.ShowAllData()
+        } catch {
+            # Log warning but do not crash the script, allowing other drivers to be processed successfully!
+            Write-Warning "Erro ao processar motorista $($driver.Name): $($_.Exception.Message)"
+            if ($escalaSheet -and $escalaSheet.AutoFilterMode) {
+                try { $escalaSheet.AutoFilter.ShowAllData() } catch {}
             }
         }
     }
