@@ -137,7 +137,9 @@ function gitAutoCommit(filename) {
     }
     exec(gitCmdCommit, { cwd: __dirname }, (commitErr, stdout) => {
       if (commitErr) {
-        if (!commitErr.message.includes('nothing to commit')) {
+        const msg = commitErr.message || '';
+        const isClean = msg.includes('nothing to commit') || msg.includes('no changes added to commit') || msg.includes('clean');
+        if (!isClean) {
           console.error('Erro ao dar git commit:', commitErr);
         }
       } else {
