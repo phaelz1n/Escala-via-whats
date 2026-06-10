@@ -89,12 +89,18 @@
                 <div class="excel-icon-large"><i class="fa-solid fa-file-excel"></i></div>
                 <div>
                     <h3>Planilha de Escalas</h3>
-                    <p class="excel-file-path">Arquivo pré-selecionado: <code class="glass-tag">Escala 10.06.26.xlsx</code></p>
+                    <p class="excel-file-path">Arquivo ativo: <code class="glass-tag" id="label-excel-name">Carregando...</code></p>
                 </div>
             </div>
-            <button id="btn-load-excel" class="btn btn-primary btn-accent">
-                <i class="fa-solid fa-rotate"></i> Carregar Escalas
-            </button>
+            <div class="btn-group">
+                <input type="file" id="input-excel-file" accept=".xlsx" style="display: none;">
+                <button id="btn-select-excel" class="btn btn-secondary">
+                    <i class="fa-solid fa-file-import"></i> Enviar Novo Excel
+                </button>
+                <button id="btn-load-excel" class="btn btn-primary btn-accent">
+                    <i class="fa-solid fa-rotate"></i> Processar Escalas
+                </button>
+            </div>
         </div>
 
         <!-- Processing Feedback Modal/Overlay -->

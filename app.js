@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputDdd = document.getElementById('input-ddd');
     const inputTemplate = document.getElementById('input-template');
     
+    const labelExcelName = document.getElementById('label-excel-name');
+    const btnSelectExcel = document.getElementById('btn-select-excel');
+    const inputExcelFile = document.getElementById('input-excel-file');
     const btnLoadExcel = document.getElementById('btn-load-excel');
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingTitle = document.getElementById('loading-title');
@@ -133,6 +136,59 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             hideLoadingOverlay();
         }
+    });
+
+    // Fetch active excel file on load
+    async function fetchActiveExcelName() {
+        try {
+            const res = await fetch('/api/active-excel');
+            const data = await res.json();
+            if (data.filename) {
+                labelExcelName.textContent = data.filename;
+            }
+        } catch (e) {
+            console.error('Error fetching active excel name:', e);
+            labelExcelName.textContent = 'Erro ao carregar';
+        }
+    }
+    fetchActiveExcelName();
+
+    // Select Excel File trigger
+    btnSelectExcel.addEventListener('click', () => {
+        inputExcelFile.click();
+    });
+
+    // Handle Excel file selection & upload
+    inputExcelFile.addEventListener('change', async () => {
+        const file = inputExcelFile.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const base64Content = e.target.result.split(',')[1];
+            showLoadingOverlay('Enviando Planilha', `Salvando ${file.name} no servidor e definindo como escala ativa...`);
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: file.name, base64: base64Content })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    labelExcelName.textContent = data.filename;
+                    inputExcelFile.value = '';
+                    // Automatically trigger processing
+                    btnLoadExcel.click();
+                } else {
+                    alert('Erro ao enviar planilha: ' + (data.error || 'Erro desconhecido'));
+                }
+            } catch (err) {
+                alert('Falha na conexão de rede: ' + err.message);
+            } finally {
+                hideLoadingOverlay();
+            }
+        };
+        reader.readAsDataURL(file);
     });
 
     // ----------------------------------------------------

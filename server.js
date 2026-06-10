@@ -15,6 +15,29 @@ let browserContext = null;
 let whatsappPage = null;
 let isConnecting = false;
 
+// Active Excel config persistence
+const configPath = path.join(__dirname, 'config.json');
+let activeExcelName = 'Escala 10.06.26.xlsx';
+
+if (fs.existsSync(configPath)) {
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    if (config.activeExcelName) {
+      activeExcelName = config.activeExcelName;
+    }
+  } catch (e) {
+    console.error('Erro ao ler config.json:', e);
+  }
+}
+
+function saveConfig() {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify({ activeExcelName }, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro ao salvar config.json:', e);
+  }
+}
+
 // Check current connection status of WhatsApp
 async function checkWhatsAppStatus() {
   if (!browserContext || !whatsappPage) return 'disconnected';
@@ -95,9 +118,42 @@ app.post('/api/whatsapp/stop', async (req, res) => {
   }
 });
 
+// Endpoint to get active excel name
+app.get('/api/active-excel', (req, res) => {
+  res.json({ filename: activeExcelName });
+});
+
+// Endpoint to upload a new excel sheet via Base64 JSON
+app.post('/api/upload', (req, res) => {
+  const { filename, base64 } = req.body;
+  if (!filename || !base64) {
+    return res.status(400).json({ error: 'Parâmetros inválidos (filename e base64 são necessários).' });
+  }
+
+  try {
+    const filePath = path.join(__dirname, filename);
+    const buffer = Buffer.from(base64, 'base64');
+    
+    fs.writeFileSync(filePath, buffer);
+    
+    activeExcelName = filename;
+    saveConfig();
+    
+    res.json({ success: true, filename: activeExcelName, message: 'Planilha atualizada com sucesso.' });
+  } catch (e) {
+    console.error('Upload error:', e);
+    res.status(500).json({ error: 'Erro ao salvar o arquivo Excel: ' + e.message });
+  }
+});
+
 // Endpoint to parse drivers and generate schedule prints
 app.get('/api/drivers', (req, res) => {
-  const excelPath = path.join(__dirname, 'Escala 10.06.26.xlsx');
+  const excelPath = path.join(__dirname, activeExcelName);
+  
+  if (!fs.existsSync(excelPath)) {
+    return res.status(404).json({ error: `O arquivo Excel ativo não foi encontrado: ${activeExcelName}. Por favor, envie uma nova planilha.` });
+  }
+  
   const outputDir = path.join(__dirname, 'temp_prints');
   
   const psCommand = `powershell -ExecutionPolicy Bypass -File "${path.join(__dirname, 'generate_prints.ps1')}" -ExcelPath "${excelPath}" -OutputDir "${outputDir}"`;
