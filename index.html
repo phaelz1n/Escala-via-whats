@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trans Pinho - Envio de Escalas</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="glow-orb glow-1"></div>
+    <div class="glow-orb glow-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header glass-card animate-fade-in">
+            <div class="header-brand">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-bus-simple"></i>
+                </div>
+                <div>
+                    <h1>Trans Pinho</h1>
+                    <p class="subtitle">Gestão & Envio Automático de Escalas</p>
+                </div>
+            </div>
+            <div class="whatsapp-status-badge glass-card" id="whatsapp-status-container">
+                <span class="status-indicator status-disconnected" id="status-dot"></span>
+                <span id="status-text">WhatsApp Desconectado</span>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- WhatsApp Connection Control Panel -->
+            <section class="glass-card animate-slide-up delay-1">
+                <div class="panel-header">
+                    <div class="panel-icon whatsapp-color"><i class="fa-brands fa-whatsapp"></i></div>
+                    <h2>Controle do WhatsApp Web</h2>
+                </div>
+                <p class="panel-desc">Inicie a sessão segura do WhatsApp Web em segundo plano. Escaneie o QR Code apenas uma vez para manter a sessão ativa.</p>
+                <div class="btn-group">
+                    <button id="btn-open-wa" class="btn btn-primary btn-success flex-1">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir WhatsApp
+                    </button>
+                    <button id="btn-close-wa" class="btn btn-secondary flex-1" disabled>
+                        <i class="fa-solid fa-power-off"></i> Fechar Conexão
+                    </button>
+                </div>
+                <div class="connection-tip alert alert-info hide" id="wa-connection-tip">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Por favor, verifique a janela do Chrome aberta na sua tela e escaneie o QR Code caso solicitado.</span>
+                </div>
+            </section>
+
+            <!-- Configuration Panel -->
+            <section class="glass-card animate-slide-up delay-2">
+                <div class="panel-header">
+                    <div class="panel-icon config-color"><i class="fa-solid fa-sliders"></i></div>
+                    <h2>Configurações de Envio</h2>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="input-ddd">DDD Padrão (RS)</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-phone"></i>
+                            <input type="text" id="input-ddd" value="51" placeholder="Ex: 51">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="input-template">Mensagem de Confirmação</label>
+                        <textarea id="input-template" rows="3" placeholder="Mensagem enviada com a imagem da escala...">Olá, {motorista}! Segue sua escala de serviço para amanhã. Por favor, confirme o recebimento respondendo a esta mensagem.</textarea>
+                        <span class="input-tip">Use <strong>{motorista}</strong> para inserir o nome automaticamente.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Sheet Loader Card -->
+        <div class="action-card glass-card animate-slide-up delay-3">
+            <div class="action-card-content">
+                <div class="excel-icon-large"><i class="fa-solid fa-file-excel"></i></div>
+                <div>
+                    <h3>Planilha de Escalas</h3>
+                    <p class="excel-file-path">Arquivo pré-selecionado: <code class="glass-tag">Escala 10.06.26.xlsx</code></p>
+                </div>
+            </div>
+            <button id="btn-load-excel" class="btn btn-primary btn-accent">
+                <i class="fa-solid fa-rotate"></i> Carregar Escalas
+            </button>
+        </div>
+
+        <!-- Processing Feedback Modal/Overlay -->
+        <div id="loading-overlay" class="overlay hide">
+            <div class="glass-card loading-box">
+                <div class="spinner"></div>
+                <h3 id="loading-title">Processando Planilha</h3>
+                <p id="loading-text">Abrindo o Excel e gerando capturas de tela das escalas dos motoristas. Aguarde...</p>
+            </div>
+        </div>
+
+        <!-- Drivers List Panel -->
+        <section class="glass-card drivers-section animate-slide-up delay-4" id="drivers-section">
+            <div class="drivers-header">
+                <div class="header-left">
+                    <h2>Motoristas Detectados</h2>
+                    <span class="count-badge" id="driver-count">0 total</span>
+                </div>
+                
+                <!-- Mass Actions -->
+                <div class="mass-actions-group" id="mass-actions" style="display: none;">
+                    <div class="selected-info">
+                        <span id="selected-count">0</span> selecionados
+                    </div>
+                    <button id="btn-send-selected" class="btn btn-primary btn-success">
+                        <i class="fa-solid fa-paper-plane"></i> Enviar Selecionados
+                    </button>
+                    <button id="btn-pause-send" class="btn btn-secondary hide">
+                        <i class="fa-solid fa-pause"></i> Pausar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-container glass-card hide" id="global-progress-bar">
+                <div class="progress-info">
+                    <span id="progress-status-label">Enviando escalas...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill-bar"></div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="drivers-empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
+                <p>Nenhum dado carregado ainda. Clique em <strong>"Carregar Escalas"</strong> acima para ler a planilha Excel e gerar as imagens.</p>
+            </div>
+
+            <!-- Drivers Table -->
+            <div class="table-responsive hide" id="drivers-table-wrapper">
+                <table class="drivers-table">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="select-all-drivers">
+                                    <span class="checkmark"></span>
+                                </label>
+                            </th>
+                            <th>Motorista</th>
+                            <th>Telefone</th>
+                            <th>Escala Ativa</th>
+                            <th>Visualização</th>
+                            <th>Status de Envio</th>
+                            <th width="120" style="text-align: right;">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drivers-table-body">
+                        <!-- Filled dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="image-lightbox" class="overlay hide">
+        <div class="lightbox-container glass-card">
+            <div class="lightbox-header">
+                <h3 id="lightbox-title">Visualização da Escala</h3>
+                <button class="btn-close-lightbox" id="btn-close-lightbox"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="lightbox-body">
+                <img id="lightbox-img" src="" alt="Escala do Motorista">
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

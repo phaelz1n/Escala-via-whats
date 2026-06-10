@@ -33,7 +33,7 @@ $filterRange = $escalaSheet.Range("A2:H${lastRow}")
 $filterRange.AutoFilter(6, "ADEMAR DOS SANTOS")
 
 # Define the full range to copy (including Row 1 title)
-$copyRange = $escalaSheet.Range("A1:H${lastRow}")
+$copyRange = $escalaSheet.Range("A1:F${lastRow}")
 
 # Copy as picture
 $copyRange.CopyPicture(1, 2) | Out-Null
