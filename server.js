@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 app.use('/temp_prints', express.static(path.join(__dirname, 'temp_prints')));
 
