@@ -7,14 +7,17 @@ param (
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# Create output dir if it doesn't exist
+# Create output dir if it doesn't exist, or clear it if it does to avoid stale images
 if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+} else {
+    Remove-Item -Path (Join-Path $OutputDir "*") -Force -ErrorAction SilentlyContinue
 }
 
 $excel = New-Object -ComObject Excel.Application
-$excel.Visible = $false
+$excel.Visible = $true
 $excel.DisplayAlerts = $false
+$excel.WindowState = -4140 # xlMinimized
 
 $workbook = $null
 
@@ -103,37 +106,46 @@ try {
                 $escalaSheet.Activate()
                 $copyRange.Select() | Out-Null
                 
-                # Clean clipboard first
-                [System.Windows.Forms.Clipboard]::Clear()
+                # Clear and verify clipboard is empty to prevent stale images
+                $cleared = $false
+                for ($c = 1; $c -le 3; $c++) {
+                    [System.Windows.Forms.Clipboard]::Clear()
+                    Start-Sleep -Milliseconds 50
+                    if (-not [System.Windows.Forms.Clipboard]::ContainsImage()) {
+                        $cleared = $true
+                        break
+                    }
+                }
                 
-                $copyRange.CopyPicture(1, 2) | Out-Null
-                Start-Sleep -Milliseconds 400
-                
-                # Save from clipboard
-                if ([System.Windows.Forms.Clipboard]::ContainsImage()) {
-                    $img = [System.Windows.Forms.Clipboard]::GetImage()
-                    $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
-                    $savePath = Join-Path $OutputDir "${sanitizedName}.png"
-                    # Convert path to forward slashes for Javascript friendliness
-                    $webPath = $savePath -replace '\\', '/'
-                    $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
-                    $img.Dispose()
+                $copied = $false
+                # Retry loop for copying and retrieving the range image from clipboard
+                for ($attempt = 1; $attempt -le 5; $attempt++) {
+                    # Clear clipboard each attempt
+                    [System.Windows.Forms.Clipboard]::Clear()
+                    Start-Sleep -Milliseconds 50
                     
-                    $driver.ImagePath = $webPath
-                } else {
-                    # Retry once
-                    Start-Sleep -Milliseconds 400
                     $copyRange.CopyPicture(1, 2) | Out-Null
-                    Start-Sleep -Milliseconds 400
+                    Start-Sleep -Milliseconds 150
+                    
                     if ([System.Windows.Forms.Clipboard]::ContainsImage()) {
                         $img = [System.Windows.Forms.Clipboard]::GetImage()
-                        $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
-                        $savePath = Join-Path $OutputDir "${sanitizedName}.png"
-                        $webPath = $savePath -replace '\\', '/'
-                        $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
-                        $img.Dispose()
-                        $driver.ImagePath = $webPath
+                        if ($img) {
+                            $sanitizedName = $driver.Name -replace '[^a-zA-Z0-9_]', '_'
+                            $savePath = Join-Path $OutputDir "${sanitizedName}.png"
+                            $webPath = $savePath -replace '\\', '/'
+                            $img.Save($savePath, [System.Drawing.Imaging.ImageFormat]::Png)
+                            $img.Dispose()
+                            
+                            $driver.ImagePath = $webPath
+                            $copied = $true
+                            break
+                        }
                     }
+                    Start-Sleep -Milliseconds 200
+                }
+                
+                if (-not $copied) {
+                    Write-Warning "Could not copy scale screenshot for $($driver.Name) after 5 attempts."
                 }
                 
                 # Clear filter
