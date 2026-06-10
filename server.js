@@ -123,6 +123,30 @@ app.get('/api/active-excel', (req, res) => {
   res.json({ filename: activeExcelName });
 });
 
+const gitPath = 'C:\\Program Files\\Git\\cmd\\git.exe';
+
+function gitAutoCommit(filename) {
+  const gitCmdAdd = `"${gitPath}" add -A`;
+  const commitMessage = `Upload e atualizacao de escala: ${filename}`;
+  const gitCmdCommit = `"${gitPath}" commit -m "${commitMessage}"`;
+  
+  exec(gitCmdAdd, { cwd: __dirname }, (addErr) => {
+    if (addErr) {
+      console.error('Erro ao dar git add:', addErr);
+      return;
+    }
+    exec(gitCmdCommit, { cwd: __dirname }, (commitErr, stdout) => {
+      if (commitErr) {
+        if (!commitErr.message.includes('nothing to commit')) {
+          console.error('Erro ao dar git commit:', commitErr);
+        }
+      } else {
+        console.log('Git auto-committed com sucesso:', stdout.trim());
+      }
+    });
+  });
+}
+
 // Endpoint to upload a new excel sheet via Base64 JSON
 app.post('/api/upload', (req, res) => {
   const { filename, base64 } = req.body;
@@ -138,6 +162,9 @@ app.post('/api/upload', (req, res) => {
     
     activeExcelName = filename;
     saveConfig();
+    
+    // Auto-commit the changes to Git in the background
+    gitAutoCommit(filename);
     
     res.json({ success: true, filename: activeExcelName, message: 'Planilha atualizada com sucesso.' });
   } catch (e) {
