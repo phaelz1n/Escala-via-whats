@@ -137,10 +137,19 @@ async function generateScaleImages(excelPath, outputDir) {
   const scaleRows = [];
   escalaSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber <= 2) return; // Skip headers
+    
+    let hasRedCell = false;
     const rowData = [];
     for (let c = 1; c <= 6; c++) {
-      rowData.push(getCellValue(row.getCell(c)));
+      const cell = row.getCell(c);
+      rowData.push(getCellValue(cell));
+      if (isRedCell(cell)) {
+        hasRedCell = true;
+      }
     }
+    
+    if (hasRedCell) return; // Skip this row if it contains any red cell
+    
     const driverName = rowData[5];
     if (driverName) {
       scaleRows.push({
