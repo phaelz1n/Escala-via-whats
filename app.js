@@ -215,7 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoadExcel.addEventListener('click', async () => {
         showLoadingOverlay('Processando Planilha', 'Analisando os dados da planilha de escalas e gerando as imagens dos motoristas em segundo plano. Por favor, aguarde...');
         try {
-            const res = await fetch('/api/drivers');
+            const selectedTab = document.getElementById('select-excel-tab').value;
+            const res = await fetch(`/api/drivers?tab=${selectedTab}`);
             const data = await res.json();
             
             if (data.success && data.drivers) {

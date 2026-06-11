@@ -56,9 +56,16 @@ function isRedCell(cell) {
 
 function formatTime(val) {
   if (val instanceof Date) {
-    const hours = String(val.getUTCHours()).padStart(2, '0');
-    const minutes = String(val.getUTCMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    const year = val.getUTCFullYear();
+    if (year === 1899 || year === 1900) {
+      const hours = String(val.getUTCHours()).padStart(2, '0');
+      const minutes = String(val.getUTCMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } else {
+      const day = String(val.getUTCDate()).padStart(2, '0');
+      const month = String(val.getUTCMonth() + 1).padStart(2, '0');
+      return `${day}/${month}/${year}`;
+    }
   }
   return val ? String(val).trim() : '';
 }
@@ -84,7 +91,7 @@ function getCellValue(cell) {
   return String(val).trim();
 }
 
-async function generateScaleImages(excelPath, outputDir) {
+async function generateScaleImages(excelPath, outputDir, tab = 'weekday') {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(excelPath);
 
@@ -118,21 +125,44 @@ async function generateScaleImages(excelPath, outputDir) {
     }
   });
 
-  const escalaSheet = workbook.worksheets.find(s => s.name.trim().toLowerCase().includes('escala di'));
-  if (!escalaSheet) {
-    throw new Error('Planilha de "Escala" não encontrada no arquivo Excel.');
+  // Find sheet based on tab parameter
+  let escalaSheet = null;
+  if (tab === 'saturday') {
+    escalaSheet = workbook.worksheets.find(s => {
+      const name = s.name.toLowerCase();
+      return name.includes('sábado') || name.includes('sabado');
+    });
+  } else if (tab === 'sunday') {
+    escalaSheet = workbook.worksheets.find(s => {
+      const name = s.name.toLowerCase();
+      return name.includes('domingo');
+    });
+  } else {
+    escalaSheet = workbook.worksheets.find(s => {
+      const name = s.name.toLowerCase();
+      return name.includes('escala di') || name.includes('seg a sex') || name.includes('diaria') || name.includes('diária');
+    });
   }
 
-  const titleCell = escalaSheet.getRow(1).getCell(5);
+  if (!escalaSheet) {
+    throw new Error(`Planilha de escala correspondente a "${tab}" não foi encontrada no arquivo Excel.`);
+  }
+
+  // Determine which columns to read (Empresa, Horário, Descrição, Motorista)
+  // and the title location
+  let titleCol = 5;
+  let showCols = [1, 4, 5, 6]; // Default weekday (Empresa=1, Horário=4, Descrição=5, Motorista=6)
+  
+  if (tab === 'saturday' || tab === 'sunday') {
+    titleCol = 4;
+    showCols = [1, 3, 4, 5]; // Saturday/Sunday (Empresa=1, Horário=3, Descrição=4, Motorista=5)
+  }
+
+  const titleCell = escalaSheet.getRow(1).getCell(titleCol);
   const titleText = getCellValue(titleCell) || 'ESCALA DE SERVIÇO';
 
   const headerRow = escalaSheet.getRow(2);
-  const headers = [];
-  for (let c = 1; c <= 6; c++) {
-    if (c !== 2 && c !== 3) { // Skip FILIAL (col 2) and CODIGO ROTA (col 3)
-      headers.push(getCellValue(headerRow.getCell(c)));
-    }
-  }
+  const headers = showCols.map(cIdx => getCellValue(headerRow.getCell(cIdx)));
 
   const scaleRows = [];
   escalaSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
@@ -140,17 +170,17 @@ async function generateScaleImages(excelPath, outputDir) {
     
     let hasRedCell = false;
     const rowData = [];
-    for (let c = 1; c <= 6; c++) {
-      const cell = row.getCell(c);
+    showCols.forEach(cIdx => {
+      const cell = row.getCell(cIdx);
       rowData.push(getCellValue(cell));
       if (isRedCell(cell)) {
         hasRedCell = true;
       }
-    }
+    });
     
     if (hasRedCell) return; // Skip this row if it contains any red cell
     
-    const driverName = rowData[5];
+    const driverName = rowData[rowData.length - 1];
     if (driverName) {
       scaleRows.push({
         data: rowData,
@@ -187,12 +217,10 @@ async function generateScaleImages(excelPath, outputDir) {
       matchingRows.forEach((r, idx) => {
         tableRowsHtml += `<tr class="${idx % 2 === 0 ? 'even' : 'odd'}">`;
         r.data.forEach((val, cIdx) => {
-          if (cIdx !== 1 && cIdx !== 2) { // Skip FILIAL (1) and CODIGO ROTA (2)
-            let cellClass = '';
-            if (cIdx === 3) cellClass = 'class="time-cell"';
-            if (cIdx === 5) cellClass = 'class="driver-cell"';
-            tableRowsHtml += `<td ${cellClass}>${val || ''}</td>`;
-          }
+          let cellClass = '';
+          if (cIdx === 1) cellClass = 'class="time-cell"';
+          if (cIdx === 3) cellClass = 'class="driver-cell"';
+          tableRowsHtml += `<td ${cellClass}>${val || ''}</td>`;
         });
         tableRowsHtml += '</tr>';
       });
@@ -493,9 +521,10 @@ app.get('/api/drivers', async (req, res) => {
   }
   
   const outputDir = path.join(__dirname, 'temp_prints');
+  const tab = req.query.tab || 'weekday';
   
   try {
-    const drivers = await generateScaleImages(excelPath, outputDir);
+    const drivers = await generateScaleImages(excelPath, outputDir, tab);
     res.json({ success: true, drivers });
   } catch (e) {
     console.error('Erro ao processar planilha de escalas:', e);

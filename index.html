@@ -11,7 +11,7 @@
     <!-- FontAwesome for Premium Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Main Style Sheet -->
-    <link rel="stylesheet" href="index.css?v=1.2">
+    <link rel="stylesheet" href="index.css?v=1.3">
 </head>
 <body>
     <div class="glass-bg"></div>
@@ -74,6 +74,17 @@
                         <div class="input-with-icon">
                             <i class="fa-solid fa-phone"></i>
                             <input type="text" id="input-ddd" value="51" placeholder="Ex: 51">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="select-excel-tab">Aba da Escala (Excel)</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <select id="select-excel-tab">
+                                <option value="weekday">Segunda a Sexta (Diária)</option>
+                                <option value="saturday">Sábado (Mensal)</option>
+                                <option value="sunday">Domingo (Mensal)</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group">
@@ -193,6 +204,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=1.2"></script>
+    <script src="app.js?v=1.3"></script>
 </body>
 </html>

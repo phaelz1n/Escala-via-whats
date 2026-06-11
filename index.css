@@ -282,7 +282,7 @@ body {
     color: var(--text-muted);
 }
 
-input[type="text"], textarea {
+input[type="text"], textarea, select {
     width: 100%;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--border-glass);
@@ -295,11 +295,20 @@ input[type="text"], textarea {
     transition: var(--transition);
 }
 
-.input-with-icon input {
+select {
+    cursor: pointer;
+}
+
+select option {
+    background-color: #101625;
+    color: var(--text-main);
+}
+
+.input-with-icon input, .input-with-icon select {
     padding-left: 2.5rem;
 }
 
-input[type="text"]:focus, textarea:focus {
+input[type="text"]:focus, textarea:focus, select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
 }
