@@ -3,6 +3,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { chromium } = require('playwright');
+const ExcelJS = require('exceljs');
 
 const app = express();
 const PORT = 3000;
@@ -38,6 +39,274 @@ function saveConfig() {
   }
 }
 
+function isRedCell(cell) {
+  if (!cell || !cell.fill) return false;
+  const fill = cell.fill;
+  if (fill.type === 'pattern' && fill.fgColor) {
+    const argb = fill.fgColor.argb;
+    if (argb) {
+      const hex = argb.toUpperCase();
+      if (hex === 'FFFF0000' || hex === 'FFC00000' || hex.includes('FF0000') || hex === 'FFFFC7CE') {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function formatTime(val) {
+  if (val instanceof Date) {
+    const hours = String(val.getUTCHours()).padStart(2, '0');
+    const minutes = String(val.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  return val ? String(val).trim() : '';
+}
+
+function getCellValue(cell) {
+  if (!cell || cell.value === null || cell.value === undefined) return '';
+  let val = cell.value;
+  if (typeof val === 'object') {
+    if (val instanceof Date) {
+      return formatTime(val);
+    }
+    if (val.result !== undefined) {
+      val = val.result;
+    } else if (val.richText) {
+      return val.richText.map(t => t.text).join('');
+    } else if (val.text) {
+      return val.text;
+    }
+  }
+  if (val instanceof Date) {
+    return formatTime(val);
+  }
+  return String(val).trim();
+}
+
+async function generateScaleImages(excelPath, outputDir) {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(excelPath);
+
+  const dadosSheet = workbook.getWorksheet('Dados') || workbook.worksheets.find(s => s.name.trim().toLowerCase() === 'dados');
+  if (!dadosSheet) {
+    throw new Error('Planilha "Dados" não encontrada no arquivo Excel.');
+  }
+
+  const driversList = [];
+  dadosSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return; // Header
+    const nameCell = row.getCell(1);
+    const phoneCell = row.getCell(2);
+    const name = getCellValue(nameCell);
+    const phone = getCellValue(phoneCell);
+    
+    if (name && !isRedCell(nameCell)) {
+      driversList.push({
+        Name: name,
+        Phone: phone,
+        HasScale: false,
+        ImagePath: null
+      });
+    }
+  });
+
+  const escalaSheet = workbook.worksheets.find(s => s.name.trim().toLowerCase().includes('escala di'));
+  if (!escalaSheet) {
+    throw new Error('Planilha de "Escala" não encontrada no arquivo Excel.');
+  }
+
+  const titleCell = escalaSheet.getRow(1).getCell(5);
+  const titleText = getCellValue(titleCell) || 'ESCALA DE SERVIÇO';
+
+  const headerRow = escalaSheet.getRow(2);
+  const headers = [];
+  for (let c = 1; c <= 6; c++) {
+    headers.push(getCellValue(headerRow.getCell(c)));
+  }
+
+  const scaleRows = [];
+  escalaSheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber <= 2) return; // Skip headers
+    const rowData = [];
+    for (let c = 1; c <= 6; c++) {
+      rowData.push(getCellValue(row.getCell(c)));
+    }
+    const driverName = rowData[5];
+    if (driverName) {
+      scaleRows.push({
+        data: rowData,
+        driverName: driverName.trim().toLowerCase()
+      });
+    }
+  });
+
+  if (fs.existsSync(outputDir)) {
+    const files = fs.readdirSync(outputDir);
+    for (const file of files) {
+      try {
+        fs.unlinkSync(path.join(outputDir, file));
+      } catch (e) {
+        console.error('Erro ao limpar imagem antiga:', e);
+      }
+    }
+  } else {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+  const page = await browser.newPage();
+
+  for (const driver of driversList) {
+    const matchingRows = scaleRows.filter(r => r.driverName === driver.Name.toLowerCase());
+    if (matchingRows.length > 0) {
+      driver.HasScale = true;
+
+      let tableRowsHtml = '';
+      matchingRows.forEach((r, idx) => {
+        tableRowsHtml += `<tr class="${idx % 2 === 0 ? 'even' : 'odd'}">`;
+        r.data.forEach((val, cIdx) => {
+          let cellClass = '';
+          if (cIdx === 3) cellClass = 'class="time-cell"';
+          if (cIdx === 5) cellClass = 'class="driver-cell"';
+          tableRowsHtml += `<td ${cellClass}>${val || ''}</td>`;
+        });
+        tableRowsHtml += '</tr>';
+      });
+
+      const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+          body {
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+          .scale-card {
+            background: #0f172a;
+            border: 2px dashed #38bdf8;
+            border-radius: 16px;
+            padding: 24px;
+            width: 850px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(56, 189, 248, 0.2);
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+          }
+          .brand {
+            color: #e2e8f0;
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 1px;
+          }
+          .title {
+            color: #38bdf8;
+            font-weight: 600;
+            font-size: 16px;
+            text-transform: uppercase;
+            background: rgba(56, 189, 248, 0.1);
+            padding: 6px 12px;
+            border-radius: 8px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #cbd5e1;
+          }
+          th {
+            background-color: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 10px 14px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+          }
+          td {
+            padding: 10px 14px;
+            font-size: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+          }
+          .even {
+            background-color: rgba(255, 255, 255, 0.02);
+          }
+          .odd {
+            background-color: transparent;
+          }
+          .time-cell {
+            color: #f59e0b;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 14px;
+          }
+          .driver-cell {
+            color: #10b981;
+            font-weight: 600;
+          }
+          .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="scale-card" id="capture-target">
+          <div class="header">
+            <div class="brand"><span style="color: #38bdf8;">TRANS</span> PINHO</div>
+            <div class="title">${titleText}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                ${headers.map(h => `<th>${h || ''}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHtml}
+            </tbody>
+          </table>
+          <div class="footer">Gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')} - Trans Pinho</div>
+        </div>
+      </body>
+      </html>
+      `;
+
+      await page.setContent(htmlContent);
+      await page.waitForTimeout(100);
+      const element = await page.$('#capture-target');
+      const sanitizedName = driver.Name.replace(/[^a-zA-Z0-9_]/g, '_');
+      const savePath = path.join(outputDir, `${sanitizedName}.png`);
+      const webPath = `/temp_prints/${sanitizedName}.png`;
+
+      await element.screenshot({ path: savePath, omitBackground: true });
+      driver.ImagePath = savePath;
+      driver.ImageUrl = webPath;
+    }
+  }
+
+  await browser.close();
+  return driversList;
+}
+
 // Check current connection status of WhatsApp
 async function checkWhatsAppStatus() {
   if (!browserContext || !whatsappPage) return 'disconnected';
@@ -66,7 +335,7 @@ app.get('/api/whatsapp/status', async (req, res) => {
   res.json({ status });
 });
 
-// Endpoint to start WhatsApp headed browser
+// Endpoint to start WhatsApp headless browser
 app.post('/api/whatsapp/start', async (req, res) => {
   if (isConnecting) {
     return res.status(400).json({ error: 'Já existe uma tentativa de conexão em andamento.' });
@@ -82,10 +351,15 @@ app.post('/api/whatsapp/start', async (req, res) => {
     const userDataDir = path.join(__dirname, 'whatsapp_session');
     
     browserContext = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      viewport: null,
-      args: ['--start-maximized']
+      headless: true,
+      viewport: { width: 1280, height: 800 },
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu'
+      ]
     });
     
     const pages = browserContext.pages();
@@ -93,12 +367,33 @@ app.post('/api/whatsapp/start', async (req, res) => {
     
     await whatsappPage.goto('https://web.whatsapp.com');
     
-    res.json({ success: true, message: 'Navegador WhatsApp Web iniciado.' });
+    res.json({ success: true, message: 'Navegador WhatsApp Web iniciado em segundo plano.' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Falha ao iniciar WhatsApp: ' + e.message });
   } finally {
     isConnecting = false;
+  }
+});
+
+// Endpoint to get WhatsApp QR Code as Base64 Image
+app.get('/api/whatsapp/qr', async (req, res) => {
+  if (!whatsappPage) {
+    return res.status(400).json({ error: 'WhatsApp não está iniciado.' });
+  }
+  try {
+    const status = await checkWhatsAppStatus();
+    if (status === 'qr_ready') {
+      const qrLocator = whatsappPage.locator('canvas');
+      if (await qrLocator.isVisible()) {
+        const qrBuffer = await qrLocator.screenshot({ type: 'png' });
+        const base64 = qrBuffer.toString('base64');
+        return res.json({ qr: `data:image/png;base64,${base64}`, status });
+      }
+    }
+    res.json({ status });
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao capturar QR Code: ' + e.message });
   }
 });
 
@@ -123,7 +418,7 @@ app.get('/api/active-excel', (req, res) => {
   res.json({ filename: activeExcelName });
 });
 
-const gitPath = 'C:\\Program Files\\Git\\cmd\\git.exe';
+const gitPath = fs.existsSync('C:\\Program Files\\Git\\cmd\\git.exe') ? 'C:\\Program Files\\Git\\cmd\\git.exe' : 'git';
 
 function gitAutoCommit(filename) {
   const gitCmdAdd = `"${gitPath}" add -A`;
@@ -176,7 +471,7 @@ app.post('/api/upload', (req, res) => {
 });
 
 // Endpoint to parse drivers and generate schedule prints
-app.get('/api/drivers', (req, res) => {
+app.get('/api/drivers', async (req, res) => {
   const excelPath = path.join(__dirname, activeExcelName);
   
   if (!fs.existsSync(excelPath)) {
@@ -185,35 +480,13 @@ app.get('/api/drivers', (req, res) => {
   
   const outputDir = path.join(__dirname, 'temp_prints');
   
-  const psCommand = `powershell -ExecutionPolicy Bypass -File "${path.join(__dirname, 'generate_prints.ps1')}" -ExcelPath "${excelPath}" -OutputDir "${outputDir}"`;
-  
-  exec(psCommand, (error, stdout, stderr) => {
-    if (error) {
-      console.error('PowerShell error:', error);
-      console.error('stderr:', stderr);
-      return res.status(500).json({ error: 'Falha ao processar Excel: ' + error.message });
-    }
-    
-    const match = stdout.match(/JSON_START\r?\n([\s\S]*?)\r?\nJSON_END/);
-    if (match) {
-      try {
-        const drivers = JSON.parse(match[1]);
-        // Map absolute local path to web accessible relative URL
-        drivers.forEach(d => {
-          if (d.ImagePath) {
-            const filename = path.basename(d.ImagePath);
-            d.ImageUrl = `/temp_prints/${filename}`;
-          }
-        });
-        res.json({ success: true, drivers });
-      } catch (e) {
-        console.error('Failed to parse JSON output from PowerShell:', e);
-        res.status(500).json({ error: 'Saída JSON inválida do PowerShell' });
-      }
-    } else {
-      res.status(500).json({ error: 'Nenhuma saída JSON encontrada na execução do PowerShell' });
-    }
-  });
+  try {
+    const drivers = await generateScaleImages(excelPath, outputDir);
+    res.json({ success: true, drivers });
+  } catch (e) {
+    console.error('Erro ao processar planilha de escalas:', e);
+    res.status(500).json({ error: 'Falha ao processar planilha de escalas: ' + e.message });
+  }
 });
 
 // Endpoint to send WhatsApp message to a driver

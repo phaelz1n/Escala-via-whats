@@ -56,7 +56,15 @@
                 </div>
                 <div class="connection-tip alert alert-info hide" id="wa-connection-tip">
                     <i class="fa-solid fa-circle-info"></i>
-                    <span>Por favor, verifique a janela do Chrome aberta na sua tela e escaneie o QR Code caso solicitado.</span>
+                    <span>Por favor, aguarde o início da conexão e o carregamento do QR Code abaixo.</span>
+                </div>
+                <!-- QR Code Display Area -->
+                <div class="qr-container hide" id="wa-qr-container">
+                    <h3>Aguardando Leitura do QR Code</h3>
+                    <p>Abra o WhatsApp no seu celular, acesse "Aparelhos Conectados" e escaneie o código abaixo:</p>
+                    <div class="qr-code-box">
+                        <img id="wa-qr-img" src="" alt="WhatsApp QR Code">
+                    </div>
                 </div>
             </section>
 

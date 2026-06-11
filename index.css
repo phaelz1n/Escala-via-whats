@@ -791,3 +791,49 @@ textarea {
         transform: translateY(0);
     }
 }
+
+/* QR Code Display styling */
+.qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.qr-container h3 {
+    font-size: 1.1rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.qr-container p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    max-width: 300px;
+    line-height: 1.4;
+}
+
+.qr-code-box {
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5rem;
+    width: 232px;
+    height: 232px;
+}
+
+.qr-code-box img {
+    width: 200px;
+    height: 200px;
+    display: block;
+}

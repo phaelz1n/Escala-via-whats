@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
     const waConnectionTip = document.getElementById('wa-connection-tip');
+    const waQrContainer = document.getElementById('wa-qr-container');
+    const waQrImg = document.getElementById('wa-qr-img');
     
     const inputDdd = document.getElementById('input-ddd');
     const inputTemplate = document.getElementById('input-template');
@@ -69,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnOpenWa.disabled = true;
                 btnCloseWa.disabled = false;
                 waConnectionTip.classList.add('hide');
+                waQrContainer.classList.add('hide');
                 enableSendingUI(true);
             } else if (whatsappStatus === 'qr_ready') {
                 statusDot.classList.add('status-loading');
@@ -76,13 +79,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnOpenWa.disabled = true;
                 btnCloseWa.disabled = false;
                 waConnectionTip.classList.remove('hide');
+                waQrContainer.classList.remove('hide');
                 enableSendingUI(false);
+                
+                // Fetch the QR code image
+                try {
+                    const qrRes = await fetch('/api/whatsapp/qr');
+                    const qrData = await qrRes.json();
+                    if (qrData.qr) {
+                        waQrImg.src = qrData.qr;
+                    }
+                } catch (qrErr) {
+                    console.error('Error fetching QR image:', qrErr);
+                }
             } else if (whatsappStatus === 'loading') {
                 statusDot.classList.add('status-loading');
                 statusText.textContent = 'Carregando WhatsApp...';
                 btnOpenWa.disabled = true;
                 btnCloseWa.disabled = false;
                 waConnectionTip.classList.add('hide');
+                waQrContainer.classList.add('hide');
                 enableSendingUI(false);
             } else { // disconnected
                 statusDot.classList.add('status-disconnected');
@@ -90,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnOpenWa.disabled = false;
                 btnCloseWa.disabled = true;
                 waConnectionTip.classList.add('hide');
+                waQrContainer.classList.add('hide');
                 enableSendingUI(false);
             }
         } catch (e) {
@@ -113,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Open WhatsApp Web
     btnOpenWa.addEventListener('click', async () => {
         try {
-            showLoadingOverlay('Iniciando WhatsApp', 'Abrindo o navegador Google Chrome em headed mode para WhatsApp Web. Isso pode levar alguns segundos...');
+            showLoadingOverlay('Iniciando WhatsApp', 'Iniciando o WhatsApp Web em segundo plano no servidor. Por favor, aguarde...');
             const res = await fetch('/api/whatsapp/start', { method: 'POST' });
             await res.json();
             updateWhatsAppStatus();
@@ -196,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------------------------------
     
     btnLoadExcel.addEventListener('click', async () => {
-        showLoadingOverlay('Processando Planilha', 'Abrindo o Excel em segundo plano, filtrando as escalas do dia e gerando capturas de tela dos motoristas. Isso leva cerca de 5-10 segundos...');
+        showLoadingOverlay('Processando Planilha', 'Analisando os dados da planilha de escalas e gerando as imagens dos motoristas em segundo plano. Por favor, aguarde...');
         try {
             const res = await fetch('/api/drivers');
             const data = await res.json();
