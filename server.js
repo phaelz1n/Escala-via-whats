@@ -88,6 +88,13 @@ async function generateScaleImages(excelPath, outputDir) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(excelPath);
 
+  // Read logo.png as base64 if it exists
+  const logoPath = path.join(__dirname, 'logo.png');
+  let logoBase64 = '';
+  if (fs.existsSync(logoPath)) {
+    logoBase64 = fs.readFileSync(logoPath, 'base64');
+  }
+
   const dadosSheet = workbook.getWorksheet('Dados') || workbook.worksheets.find(s => s.name.trim().toLowerCase() === 'dados');
   if (!dadosSheet) {
     throw new Error('Planilha "Dados" não encontrada no arquivo Excel.');
@@ -198,31 +205,31 @@ async function generateScaleImages(excelPath, outputDir) {
           }
           .scale-card {
             background: #ffffff;
-            border: 1px solid #d4d4d4;
-            padding: 12px;
+            border: 1px solid #cbd5e1;
+            padding: 20px;
             width: 820px;
           }
-          .header {
+          .header-container {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            background-color: #e2e8f0;
-            border: 1px solid #cbd5e1;
-            border-bottom: 2px solid #64748b;
-            padding: 6px 12px;
-            margin-bottom: 8px;
+            margin-bottom: 18px;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 12px;
           }
-          .brand {
-            color: #0f172a;
-            font-weight: bold;
-            font-size: 14px;
-            letter-spacing: 0.5px;
+          .logo {
+            height: 90px;
+            margin-bottom: 12px;
+            object-fit: contain;
           }
-          .title {
-            color: #0f172a;
-            font-weight: bold;
-            font-size: 14px;
+          .title-bar {
+            color: #1e3a8a;
+            font-weight: 800;
+            font-size: 26px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            margin-top: 5px;
           }
           table {
             width: 100%;
@@ -258,7 +265,7 @@ async function generateScaleImages(excelPath, outputDir) {
             color: #0f172a;
           }
           .footer {
-            margin-top: 12px;
+            margin-top: 15px;
             text-align: center;
             font-size: 10px;
             color: #94a3b8;
@@ -268,9 +275,9 @@ async function generateScaleImages(excelPath, outputDir) {
       </head>
       <body>
         <div class="scale-card" id="capture-target">
-          <div class="header">
-            <div class="brand">TRANS PINHO</div>
-            <div class="title">${titleText}</div>
+          <div class="header-container">
+            ${logoBase64 ? `<img src="data:image/png;base64,${logoBase64}" class="logo" alt="Logo">` : ''}
+            <div class="title-bar">${titleText}</div>
           </div>
           <table>
             <thead>
