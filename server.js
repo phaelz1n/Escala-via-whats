@@ -227,7 +227,7 @@ async function generateScaleImages(excelPath, outputDir) {
             padding-bottom: 12px;
           }
           .logo {
-            height: 90px;
+            height: 65px;
             margin-bottom: 12px;
             object-fit: contain;
           }

@@ -505,7 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------------------------------
     
     function openLightbox(url, name) {
-        lightboxImg.src = url;
+        const baseUrl = url.split('?')[0];
+        lightboxImg.src = `${baseUrl}?t=${Date.now()}`;
         lightboxTitle.textContent = `Escala de Serviço - ${name}`;
         imageLightbox.classList.remove('hide');
     }
