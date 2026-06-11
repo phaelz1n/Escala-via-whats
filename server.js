@@ -182,96 +182,90 @@ async function generateScaleImages(excelPath, outputDir) {
       <html>
       <head>
         <meta charset="UTF-8">
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <style>
           body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
             margin: 0;
-            padding: 0;
-            background-color: transparent;
+            padding: 10px;
+            background-color: #ffffff;
             display: flex;
             justify-content: center;
             align-items: center;
           }
           .scale-card {
-            background: #0f172a;
-            border: 2px dashed #38bdf8;
-            border-radius: 16px;
-            padding: 24px;
-            width: 850px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background: #ffffff;
+            border: 1px solid #d4d4d4;
+            padding: 12px;
+            width: 820px;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid rgba(56, 189, 248, 0.2);
-            padding-bottom: 12px;
-            margin-bottom: 18px;
+            background-color: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-bottom: 2px solid #64748b;
+            padding: 6px 12px;
+            margin-bottom: 8px;
           }
           .brand {
-            color: #e2e8f0;
-            font-weight: 700;
-            font-size: 20px;
-            letter-spacing: 1px;
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 14px;
+            letter-spacing: 0.5px;
           }
           .title {
-            color: #38bdf8;
-            font-weight: 600;
-            font-size: 16px;
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 14px;
             text-transform: uppercase;
-            background: rgba(56, 189, 248, 0.1);
-            padding: 6px 12px;
-            border-radius: 8px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            color: #cbd5e1;
+            border: 1px solid #cbd5e1;
           }
           th {
-            background-color: rgba(56, 189, 248, 0.15);
-            color: #38bdf8;
-            font-weight: 600;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-weight: bold;
             font-size: 12px;
-            text-transform: uppercase;
-            padding: 10px 14px;
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
             text-align: left;
-            border: 1px solid rgba(255, 255, 255, 0.1);
           }
           td {
-            padding: 10px 14px;
-            font-size: 13px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #334155;
+            padding: 6px 10px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
           }
-          .even {
-            background-color: rgba(255, 255, 255, 0.02);
-          }
-          .odd {
-            background-color: transparent;
+          tr.even td {
+            background-color: #f8fafc;
           }
           .time-cell {
-            color: #f59e0b;
-            font-weight: 700;
-            font-family: monospace;
-            font-size: 14px;
+            font-weight: bold;
+            color: #000000;
+            text-align: center;
           }
           .driver-cell {
-            color: #10b981;
-            font-weight: 600;
+            font-weight: bold;
+            color: #0f172a;
           }
           .footer {
-            margin-top: 20px;
+            margin-top: 12px;
             text-align: center;
-            font-size: 11px;
-            color: #64748b;
+            font-size: 10px;
+            color: #94a3b8;
+            font-style: italic;
           }
         </style>
       </head>
       <body>
         <div class="scale-card" id="capture-target">
           <div class="header">
-            <div class="brand"><span style="color: #38bdf8;">TRANS</span> PINHO</div>
+            <div class="brand">TRANS PINHO</div>
             <div class="title">${titleText}</div>
           </div>
           <table>
