@@ -122,7 +122,9 @@ async function generateScaleImages(excelPath, outputDir) {
   const headerRow = escalaSheet.getRow(2);
   const headers = [];
   for (let c = 1; c <= 6; c++) {
-    headers.push(getCellValue(headerRow.getCell(c)));
+    if (c !== 2 && c !== 3) { // Skip FILIAL (col 2) and CODIGO ROTA (col 3)
+      headers.push(getCellValue(headerRow.getCell(c)));
+    }
   }
 
   const scaleRows = [];
@@ -169,10 +171,12 @@ async function generateScaleImages(excelPath, outputDir) {
       matchingRows.forEach((r, idx) => {
         tableRowsHtml += `<tr class="${idx % 2 === 0 ? 'even' : 'odd'}">`;
         r.data.forEach((val, cIdx) => {
-          let cellClass = '';
-          if (cIdx === 3) cellClass = 'class="time-cell"';
-          if (cIdx === 5) cellClass = 'class="driver-cell"';
-          tableRowsHtml += `<td ${cellClass}>${val || ''}</td>`;
+          if (cIdx !== 1 && cIdx !== 2) { // Skip FILIAL (1) and CODIGO ROTA (2)
+            let cellClass = '';
+            if (cIdx === 3) cellClass = 'class="time-cell"';
+            if (cIdx === 5) cellClass = 'class="driver-cell"';
+            tableRowsHtml += `<td ${cellClass}>${val || ''}</td>`;
+          }
         });
         tableRowsHtml += '</tr>';
       });
