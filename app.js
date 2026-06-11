@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '<span class="badge badge-neutral"><i class="fa-solid fa-circle-minus"></i> Não</span>';
 
             const viewButton = driver.HasScale 
-                ? `<button class="btn-view-print" data-url="${driver.ImageUrl}" data-name="${driver.Name}">
+                ? `<button class="btn-view-print" data-url="${driver.ImageUrl}?t=${Date.now()}" data-name="${driver.Name}">
                      <i class="fa-regular fa-image"></i> Ver Print
                    </button>` 
                 : '<span class="text-muted">-</span>';
