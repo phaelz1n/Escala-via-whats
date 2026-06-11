@@ -353,13 +353,19 @@ async function generateScaleImages(excelPath, outputDir, tab = 'weekday') {
 async function checkWhatsAppStatus() {
   if (!browserContext || !whatsappPage) return 'disconnected';
   try {
-    const searchLocator = whatsappPage.locator('[data-testid="search"]');
-    const qrLocator = whatsappPage.locator('canvas');
+    // Try to close the "Novidades do WhatsApp Web" modal if it exists
+    const modalCloseBtn = whatsappPage.locator('[aria-label="Fechar"], [data-testid="x"], button:has([data-icon="x"])').first();
+    if (await modalCloseBtn.isVisible().catch(() => false)) {
+      await modalCloseBtn.click().catch(() => {});
+    }
+
+    const loggedInLocator = whatsappPage.locator('header, #pane-side, div[contenteditable="true"]').first();
+    const qrLocator = whatsappPage.locator('canvas').first();
     
-    const isSearchVisible = await searchLocator.isVisible();
-    const isQrVisible = await qrLocator.isVisible();
+    const isSideVisible = await loggedInLocator.isVisible().catch(() => false);
+    const isQrVisible = await qrLocator.isVisible().catch(() => false);
     
-    if (isSearchVisible) {
+    if (isSideVisible) {
       return 'connected';
     } else if (isQrVisible) {
       return 'qr_ready';
@@ -370,6 +376,18 @@ async function checkWhatsAppStatus() {
     return 'disconnected';
   }
 }
+
+// Debug endpoint to get WhatsApp screenshot
+app.get('/api/whatsapp/debug', async (req, res) => {
+  if (!whatsappPage) return res.status(400).send('No whatsapp page');
+  try {
+    const buffer = await whatsappPage.screenshot({ type: 'png' });
+    res.set('Content-Type', 'image/png');
+    res.send(buffer);
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
+});
 
 // Endpoint to get WhatsApp status
 app.get('/api/whatsapp/status', async (req, res) => {
@@ -395,6 +413,7 @@ app.post('/api/whatsapp/start', async (req, res) => {
     browserContext = await chromium.launchPersistentContext(userDataDir, {
       headless: true,
       viewport: { width: 1280, height: 800 },
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -562,14 +581,14 @@ app.post('/api/whatsapp/send', async (req, res) => {
     // Navigate to contact send link
     await whatsappPage.goto(`https://web.whatsapp.com/send?phone=${cleanPhone}`);
     
-    const chatInputSelector = 'div[contenteditable="true"]';
+    const chatInputSelector = 'footer div[contenteditable="true"]';
     const invalidDialogSelector = 'div[role="button"]:has-text("OK"), button:has-text("OK"), [data-testid="popup-controls-ok"]';
     
     let chatLoaded = false;
     let chatError = null;
     
     // Wait for chat or invalid number modal
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 60; i++) {
       const isInput = await whatsappPage.locator(chatInputSelector).first().isVisible();
       const isInvalid = await whatsappPage.locator(invalidDialogSelector).first().isVisible();
       

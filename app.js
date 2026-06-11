@@ -41,6 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSendSelected = document.getElementById('btn-send-selected');
     const btnPauseSend = document.getElementById('btn-pause-send');
     
+    const filterGroup = document.getElementById('driver-filters');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    let currentFilter = 'all';
+    
     const globalProgressBar = document.getElementById('global-progress-bar');
     const progressStatusLabel = document.getElementById('progress-status-label');
     const progressPercent = document.getElementById('progress-percent');
@@ -232,6 +236,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('select-excel-tab').addEventListener('change', () => {
+        if (drivers.length > 0 || labelExcelName.textContent !== 'Carregando...') {
+            btnLoadExcel.click();
+        }
+    });
+
     function renderDriversTable() {
         tableBody.innerHTML = '';
         selectedDriverIds = [];
@@ -240,6 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyState.classList.remove('hide');
             tableWrapper.classList.add('hide');
             massActions.style.display = 'none';
+            if (filterGroup) filterGroup.style.display = 'none';
             driverCount.textContent = '0 total';
             return;
         }
@@ -247,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyState.classList.add('hide');
         tableWrapper.classList.remove('hide');
         massActions.style.display = 'flex';
+        if (filterGroup) filterGroup.style.display = 'flex';
         
         const activeDrivers = drivers.filter(d => d.HasScale).length;
         driverCount.textContent = `${drivers.length} total (${activeDrivers} com escalas)`;
@@ -332,6 +344,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectAllDrivers.checked = false;
         updateSelectedCount();
+        applyFilter();
+    }
+
+    // Handle Filters
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-filter');
+            applyFilter();
+        });
+    });
+
+    function applyFilter() {
+        const rows = document.querySelectorAll('#drivers-table-body tr');
+        rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            const driver = drivers[id];
+            if (!driver) return;
+            
+            if (currentFilter === 'all') {
+                row.style.display = '';
+            } else if (currentFilter === 'with-scale' && driver.HasScale) {
+                row.style.display = '';
+            } else if (currentFilter === 'without-scale' && !driver.HasScale) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
     }
 
     // Handle Select All Checkbox
